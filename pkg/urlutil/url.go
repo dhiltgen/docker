@@ -5,6 +5,8 @@ import "strings"
 var validUrlPrefixes = []string{
 	"http://",
 	"https://",
+	"hg::https://",
+	"hg::http://",
 }
 
 // IsURL returns true if the provided str is a valid URL by doing

@@ -103,6 +103,22 @@ func (b *BuilderJob) CmdBuild(job *engine.Job) engine.Status {
 			return job.Error(err)
 		}
 		context = c
+	} else if urlutil.IsHgURL(remoteURL) {
+		root, err := ioutil.TempDir("", "docker-build-hg")
+		if err != nil {
+			return job.Error(err)
+		}
+		defer os.RemoveAll(root)
+
+		if output, err := exec.Command("hg", "clone", urlutil.CleanHgURL(remoteURL), root).CombinedOutput(); err != nil {
+			return job.Errorf("Error trying to use hg: %s (%s)", err, output)
+		}
+
+		c, err := archive.Tar(root, archive.Uncompressed)
+		if err != nil {
+			return job.Error(err)
+		}
+		context = c
 	} else if urlutil.IsURL(remoteURL) {
 		f, err := utils.Download(remoteURL)
 		if err != nil {

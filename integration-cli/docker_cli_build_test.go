@@ -4328,6 +4328,79 @@ func TestBuildFromGIT(t *testing.T) {
 	logDone("build - build from GIT")
 }
 
+func TestBuildFromGITRemote(t *testing.T) {
+	name := "testbuildfromgitremote"
+	defer deleteImages(name)
+	git, err := fakeGIT("repo", map[string]string{
+		"Dockerfile": `FROM busybox
+					ADD first /first
+					RUN [ -f /first ]
+					MAINTAINER docker`,
+		"first": "test git data",
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer git.Close()
+
+	buildCmd := exec.Command(dockerBinary, "build", "--daemon-clone=true", git.RepoURL)
+	if out, _, err := runCommandWithOutput(buildCmd); err != nil {
+		t.Fatalf("failed to build the image: %s, %v", out, err)
+	}
+	logDone("build - build from GIT (remote)")
+}
+
+func TestBuildFromHG(t *testing.T) {
+	name := "testbuildfromhg"
+	defer deleteImages(name)
+	hg, err := fakeHG("repo", map[string]string{
+		"Dockerfile": `FROM busybox
+					ADD first /first
+					RUN [ -f /first ]
+					MAINTAINER docker`,
+		"first": "test hg data",
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer hg.Close()
+
+	_, err = buildImageFromPath(name, "hg::"+hg.RepoURL, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := inspectField(name, "Author")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res != "docker" {
+		t.Fatalf("Maintainer should be docker, got %s", res)
+	}
+	logDone("build - build from HG")
+}
+
+func TestBuildFromHGRemote(t *testing.T) {
+	name := "testbuildfromhgremote"
+	defer deleteImages(name)
+	hg, err := fakeHG("repo", map[string]string{
+		"Dockerfile": `FROM busybox
+					ADD first /first
+					RUN [ -f /first ]
+					MAINTAINER docker`,
+		"first": "test hg data",
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer hg.Close()
+
+	buildCmd := exec.Command(dockerBinary, "build", "--daemon-clone=true", "hg::"+hg.RepoURL)
+	if out, _, err := runCommandWithOutput(buildCmd); err != nil {
+		t.Fatalf("failed to build the image: %s, %v", out, err)
+	}
+	logDone("build - build from HG (remote)")
+}
+
 func TestBuildCleanupCmdOnEntrypoint(t *testing.T) {
 	name := "testbuildcmdcleanuponentrypoint"
 	defer deleteImages(name)

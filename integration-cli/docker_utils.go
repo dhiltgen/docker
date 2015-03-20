@@ -969,6 +969,100 @@ func fakeGIT(name string, files map[string]string, enforceLocalServer bool) (*Fa
 	}, nil
 }
 
+type HgServer interface {
+	URL() string
+	Close() error
+}
+
+type localHgServer struct {
+	*httptest.Server
+}
+
+func (r *localHgServer) Close() error {
+	r.Server.Close()
+	return nil
+}
+
+func (r *localHgServer) URL() string {
+	return r.Server.URL
+}
+
+type FakeHG struct {
+	root    string
+	server  HgServer
+	RepoURL string
+}
+
+func (g *FakeHG) Close() {
+	g.server.Close()
+	os.RemoveAll(g.root)
+}
+
+func fakeHG(name string, files map[string]string, enforceLocalServer bool) (*FakeHG, error) {
+	ctx, err := fakeContextWithFiles(files)
+	if err != nil {
+		return nil, err
+	}
+	defer ctx.Close()
+	curdir, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	defer os.Chdir(curdir)
+
+	if output, err := exec.Command("hg", "init", ctx.Dir).CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("error trying to init repo: %s (%s)", err, output)
+	}
+	err = os.Chdir(ctx.Dir)
+	if err != nil {
+		return nil, err
+	}
+	if output, err := exec.Command("hg", "add", "Dockerfile", "first").CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("error trying to add files to repo: %s (%s)", err, output)
+	}
+	if output, err := exec.Command("hg", "commit", "-m", "Initial commit").CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("error trying to commit to repo: %s (%s)", err, output)
+	}
+
+	root, err := ioutil.TempDir("", "docker-test-hg-repo")
+	if err != nil {
+		return nil, err
+	}
+	repoPath := filepath.Join(root, name)
+	if output, err := exec.Command("hg", "clone", ctx.Dir, repoPath).CombinedOutput(); err != nil {
+		os.RemoveAll(root)
+		return nil, fmt.Errorf("error trying to clone: %s (%s)", err, output)
+	}
+	err = os.Chdir(repoPath)
+	if err != nil {
+		os.RemoveAll(root)
+		return nil, err
+	}
+	err = os.Chdir(curdir)
+	if err != nil {
+		os.RemoveAll(root)
+		return nil, err
+	}
+
+	var server HgServer
+	if !enforceLocalServer {
+		// use fakeStorage server, which might be local or remote (at test daemon)
+		server, err = fakeStorageWithContext(fakeContextFromDir(root))
+		if err != nil {
+			return nil, fmt.Errorf("cannot start fake storage: %v", err)
+		}
+	} else {
+		// always start a local http server on CLI test machin
+		httpServer := httptest.NewServer(http.FileServer(http.Dir(root)))
+		server = &localHgServer{httpServer}
+	}
+	return &FakeHG{
+		root:    root,
+		server:  server,
+		RepoURL: fmt.Sprintf("%s/%s", server.URL(), name),
+	}, nil
+}
+
 // Write `content` to the file at path `dst`, creating it if necessary,
 // as well as any missing directories.
 // The file is truncated if it already exists.

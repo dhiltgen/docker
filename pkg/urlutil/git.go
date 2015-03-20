@@ -3,7 +3,7 @@ package urlutil
 import "strings"
 
 var (
-	validPrefixes = []string{
+	validGitPrefixes = []string{
 		"git://",
 		"github.com/",
 		"git@",
@@ -15,7 +15,7 @@ func IsGitURL(str string) bool {
 	if IsURL(str) && strings.HasSuffix(str, ".git") {
 		return true
 	}
-	for _, prefix := range validPrefixes {
+	for _, prefix := range validGitPrefixes {
 		if strings.HasPrefix(str, prefix) {
 			return true
 		}
