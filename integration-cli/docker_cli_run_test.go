@@ -3552,6 +3552,29 @@ func (s *DockerSuite) TestContainerWithConflictingSharedNetwork(c *check.C) {
 	dockerCmd(c, "network", "rm", "testnetwork1")
 }
 
+func (s *DockerSuite) TestContainerWithConflictingNoneNetwork(c *check.C) {
+	testRequires(c, DaemonIsLinux)
+	dockerCmd(c, "run", "-d", "--net=none", "--name=first", "busybox", "top")
+
+	// Create a network using bridge driver
+	dockerCmd(c, "network", "create", "-d", "bridge", "testnetwork1")
+
+	// Connecting to the user defined network must fail
+	_, _, err := dockerCmdWithError("network", "connect", "testnetwork1", "first")
+	c.Assert(err, check.NotNil)
+
+	// create a container connected to testnetwork1
+	dockerCmd(c, "run", "-d", "--net=testnetwork1", "--name=second", "busybox", "top")
+
+	// Connect second container to none network. it must fail as well
+	_, _, err = dockerCmdWithError("network", "connect", "none", "second")
+	c.Assert(err, check.NotNil)
+
+	dockerCmd(c, "stop", "first")
+	dockerCmd(c, "stop", "second")
+	dockerCmd(c, "network", "rm", "testnetwork1")
+}
+
 // #11957 - stdin with no tty does not exit if stdin is not closed even though container exited
 func (s *DockerSuite) TestRunStdinBlockedAfterContainerExit(c *check.C) {
 	cmd := exec.Command(dockerBinary, "run", "-i", "--name=test", "busybox", "true")
