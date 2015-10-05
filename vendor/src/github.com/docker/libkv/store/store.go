@@ -46,7 +46,7 @@ type Config struct {
 }
 
 // ClientTLSConfig contains data for a Client TLS configuration in the form
-//  the etcd client wants it.  Eventually we'll adapt it for ZK and Consul.
+// the etcd client wants it.  Eventually we'll adapt it for ZK and Consul.
 type ClientTLSConfig struct {
 	CertFile   string
 	KeyFile    string
@@ -108,18 +108,20 @@ type KVPair struct {
 
 // WriteOptions contains optional request parameters
 type WriteOptions struct {
-	TTL time.Duration
+	IsDir bool
+	TTL   time.Duration
 }
 
 // LockOptions contains optional request parameters
 type LockOptions struct {
-	Value []byte        // Optional, value to associate with the lock
-	TTL   time.Duration // Optional, expiration ttl associated with the lock
+	Value     []byte        // Optional, value to associate with the lock
+	TTL       time.Duration // Optional, expiration ttl associated with the lock
+	RenewLock chan struct{} // Optional, chan used to control and stop the session ttl renewal for the lock
 }
 
 // Locker provides locking mechanism on top of the store.
 // Similar to `sync.Lock` except it may return errors.
 type Locker interface {
-	Lock() (<-chan struct{}, error)
+	Lock(stopChan chan struct{}) (<-chan struct{}, error)
 	Unlock() error
 }

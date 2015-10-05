@@ -128,3 +128,14 @@ clean() {
 
 	echo done
 }
+
+fiximports() {
+	local pkg="$1"
+	local remove="$2"  # Must be the beginning of the import quoted string
+
+	local target="vendor/src/$pkg"
+
+	echo "Fixing imports for $pkg"
+        find "$target" -name \*.go -exec sed -i -e "s|\"${remove}|\"|g" {} \;
+}
+
