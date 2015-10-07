@@ -38,6 +38,9 @@ const (
 
 	// OverlayNeighborIP constant represents overlay driver neighbor IP
 	OverlayNeighborIP = DriverPrefix + ".overlay.neighbor_ip"
+
+	// Serialized tls.Config
+	KVTLS = "kv.tls"
 )
 
 // Key extracts the key portion of the label

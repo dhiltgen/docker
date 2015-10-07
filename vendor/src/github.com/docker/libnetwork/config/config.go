@@ -6,6 +6,7 @@ import (
 	"github.com/BurntSushi/toml"
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/discovery"
+	"github.com/docker/docker/pkg/tlsconfig"
 	"github.com/docker/libkv/store"
 	"github.com/docker/libnetwork/netlabel"
 )
@@ -107,6 +108,31 @@ func OptionKVProviderURL(url string) Option {
 	return func(c *Config) {
 		log.Infof("Option OptionKVProviderURL: %s", url)
 		c.GlobalStore.Client.Address = strings.TrimSpace(url)
+	}
+}
+
+// OptionKVOpts function returns an option setter for kvstore options
+func OptionKVOpts(opts map[string]string) Option {
+	return func(c *Config) {
+		if opts["kv.cacertfile"] != "" && opts["kv.certfile"] != "" && opts["kv.keyfile"] != "" {
+			log.Info("Option Initializing KV with TLS")
+			tlsConfig, err := tlsconfig.Client(tlsconfig.Options{
+				CAFile:   opts["kv.cacertfile"],
+				CertFile: opts["kv.certfile"],
+				KeyFile:  opts["kv.keyfile"],
+			})
+			if err != nil {
+				log.Errorf("Unable to set up TLS: %s", err)
+				return
+			}
+			if c.GlobalStore.Client.Config == nil {
+				c.GlobalStore.Client.Config = &store.Config{TLS: tlsConfig}
+			} else {
+				c.GlobalStore.Client.Config.TLS = tlsConfig
+			}
+		} else {
+			log.Info("Option Initializing KV without TLS")
+		}
 	}
 }
 

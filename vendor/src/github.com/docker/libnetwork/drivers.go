@@ -32,6 +32,9 @@ func makeDriverConfig(c *controller, ntype string) map[string]interface{} {
 	if c.validateGlobalStoreConfig() {
 		config[netlabel.KVProvider] = c.cfg.GlobalStore.Client.Provider
 		config[netlabel.KVProviderURL] = c.cfg.GlobalStore.Client.Address
+		if c.cfg.GlobalStore.Client.Config != nil && c.cfg.GlobalStore.Client.Config.TLS != nil {
+			config[netlabel.KVTLS] = *c.cfg.GlobalStore.Client.Config.TLS
+		}
 	}
 
 	for _, label := range c.cfg.Daemon.Labels {

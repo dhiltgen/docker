@@ -1,6 +1,7 @@
 package overlay
 
 import (
+	"crypto/tls"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -123,6 +124,15 @@ func (d *driver) configure() error {
 			provConfig, confOk := d.config[netlabel.KVProviderConfig]
 			if confOk {
 				cfg.Client.Config = provConfig.(*store.Config)
+			}
+			tlsConfig, tlsOk := d.config[netlabel.KVTLS]
+			if tlsOk {
+				logrus.Info("Initializing driver KV with TLS")
+				tlscfg := tlsConfig.(tls.Config)
+				cfg.Client.Config = &store.Config{TLS: &tlscfg}
+
+			} else {
+				logrus.Info("Initializing driver KV without TLS")
 			}
 			d.store, err = datastore.NewDataStore(cfg)
 			if err != nil {
